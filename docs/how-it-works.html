@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HF Range Tracker — Technical Guide</title>
+<style>
+/* ── Base ── */
+*, *::before, *::after { box-sizing: border-box; }
+:root {
+  --blue:   #1a56db;
+  --green:  #057a55;
+  --orange: #c27803;
+  --red:    #c81e1e;
+  --gray:   #6b7280;
+  --light:  #f9fafb;
+  --border: #e5e7eb;
+  --text:   #111827;
+}
+html { font-size: 11pt; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  color: var(--text);
+  max-width: 190mm;
+  margin: 0 auto;
+  padding: 20mm 15mm;
+  line-height: 1.6;
+}
+
+/* ── Typography ── */
+h1 { font-size: 26pt; color: var(--blue); margin: 0 0 4px; letter-spacing: -0.5px; }
+h2 { font-size: 15pt; color: var(--blue); border-bottom: 2px solid var(--blue); padding-bottom: 4px; margin: 28px 0 12px; }
+h3 { font-size: 12pt; color: #1e3a5f; margin: 18px 0 8px; }
+p  { margin: 0 0 10px; }
+ul, ol { margin: 0 0 10px 20px; }
+li { margin-bottom: 4px; }
+strong { color: #1e293b; }
+code { font-family: 'Cascadia Code', 'Courier New', monospace; font-size: 9pt; background: #f1f5f9; padding: 1px 4px; border-radius: 3px; }
+pre {
+  background: #1e293b; color: #e2e8f0;
+  font-family: 'Cascadia Code', 'Courier New', monospace;
+  font-size: 9pt; padding: 14px 16px; border-radius: 6px;
+  white-space: pre; overflow-x: auto; margin: 10px 0 16px;
+  border-left: 3px solid var(--blue);
+}
+
+/* ── Cover ── */
+.cover {
+  text-align: center;
+  padding: 40px 0 30px;
+  border-bottom: 3px solid var(--blue);
+  margin-bottom: 30px;
+}
+.cover .callsign {
+  font-size: 48pt; font-weight: 800; color: var(--blue);
+  letter-spacing: 4px; line-height: 1;
+}
+.cover .subtitle { font-size: 14pt; color: var(--gray); margin: 8px 0 20px; }
+.cover .meta { font-size: 10pt; color: var(--gray); }
+.cover .meta span { margin: 0 12px; }
+
+/* ── Info boxes ── */
+.box {
+  border-radius: 6px; padding: 12px 16px; margin: 14px 0;
+  border-left: 4px solid;
+}
+.box-blue   { background: #eff6ff; border-color: var(--blue);   }
+.box-green  { background: #f0fdf4; border-color: var(--green);  }
+.box-orange { background: #fffbeb; border-color: var(--orange); }
+.box-red    { background: #fff1f2; border-color: var(--red);    }
+.box-title  { font-weight: 700; font-size: 10pt; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.box-blue   .box-title { color: var(--blue);   }
+.box-green  .box-title { color: var(--green);  }
+.box-orange .box-title { color: var(--orange); }
+.box-red    .box-title { color: var(--red);    }
+
+/* ── Tables ── */
+table { width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 10pt; }
+th { background: #1e3a5f; color: #fff; padding: 7px 10px; text-align: left; font-weight: 600; }
+td { padding: 6px 10px; border-bottom: 1px solid var(--border); }
+tr:nth-child(even) td { background: var(--light); }
+
+/* ── Diagrams ── */
+.diagram {
+  background: #1e293b; color: #94a3b8;
+  font-family: 'Cascadia Code', 'Courier New', monospace;
+  font-size: 9pt; padding: 16px 20px; border-radius: 8px; margin: 14px 0;
+  line-height: 1.5;
+}
+.diagram .hi  { color: #60a5fa; }
+.diagram .gr  { color: #4ade80; }
+.diagram .yl  { color: #fbbf24; }
+.diagram .rd  { color: #f87171; }
+.diagram .wh  { color: #e2e8f0; }
+
+/* ── Flow steps ── */
+.steps { counter-reset: step; list-style: none; margin-left: 0; }
+.steps li {
+  counter-increment: step;
+  display: flex; gap: 14px; margin-bottom: 12px; align-items: flex-start;
+}
+.steps li::before {
+  content: counter(step);
+  background: var(--blue); color: #fff;
+  min-width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; font-weight: 700; font-size: 11pt;
+  flex-shrink: 0; margin-top: 1px;
+}
+
+/* ── Power table highlight ── */
+.power-rec { color: var(--green); font-weight: 700; }
+.power-ok  { color: var(--orange); }
+.power-low { color: var(--gray); }
+
+/* ── Page breaks ── */
+@media print {
+  body { padding: 0; max-width: 100%; }
+  h2   { page-break-before: auto; }
+  .no-break, .box, .diagram, table { page-break-inside: avoid; }
+  .page-break { page-break-before: always; }
+  pre  { white-space: pre-wrap; }
+}
+
+/* ── Footer line ── */
+.footer { margin-top: 40px; border-top: 1px solid var(--border); padding-top: 10px; color: var(--gray); font-size: 9pt; text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     COVER
+═══════════════════════════════════════════════════════════════════════ -->
+<div class="cover">
+  <div class="callsign">PD1LVH</div>
+  <div class="subtitle">HF Range Tracker — Technical Guide</div>
+  <p style="max-width:400px;margin:0 auto 20px;color:#374151;font-size:11pt">
+    How to automatically measure the propagation range of an HF station using
+    distributed KiwiSDR receivers, FFT-based tone detection, and IC-7300 remote control.
+  </p>
+  <div class="meta">
+    <span>📡 Icom IC-7300</span>
+    <span>🌍 Amsterdam, JO22</span>
+    <span>📻 40m / 20m / 10m SSB</span>
+    <span>🔬 Signal: 1000 Hz tone</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     1. CONCEPT
+═══════════════════════════════════════════════════════════════════════ -->
+<h2>1. Concept</h2>
+
+<p>
+The HF Range Tracker answers one question: <strong>how far does my signal reach?</strong>
+It does this by transmitting a precise audio tone from the IC-7300, then automatically
+connecting to public online receivers (KiwiSDRs) located at different distances around
+Europe and the world, measuring whether — and how well — the tone is received at each
+location.
+</p>
+
+<div class="box box-blue">
+  <div class="box-title">One-sentence summary</div>
+  The software controls your radio, generates a test tone, then "listens" on dozens of
+  internet-connected receivers simultaneously to map where your signal actually goes.
+</div>
+
+<h3>Why not just call a friend?</h3>
+<p>
+A human report ("I hear you 5/9 in Berlin") gives one data point and depends on someone
+being available. The tracker gives you <strong>20+ data points in one pass</strong>,
+automatically, any time of day, with repeatable RSSI and SNR figures.
+It also shows you propagation changes over time if you run it repeatedly.
+</p>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     2. HF PROPAGATION
+═══════════════════════════════════════════════════════════════════════ -->
+<h2>2. HF Radio Propagation</h2>
+
+<h3>How HF signals travel</h3>
+<p>
+At frequencies between roughly 3 and 30 MHz, radio waves can reflect off the
+<strong>ionosphere</strong> — a layer of ionised gas at 80–400 km altitude — and
+return to Earth thousands of kilometres away. This is called <em>sky-wave</em>
+propagation, and it is what makes intercontinental radio communication possible
+without satellites.
+</p>
+
+<div class="diagram">
+<pre class="diagram">
+  Amsterdam                                                       Receiver
+  (TX)                                                           ~2000 km
+
+       │                   <span class="yl">I O N O S P H E R E</span>                          │
+  ─────┼──────────────────────────────────────────────────────────────────
+       │          <span class="hi">↗  reflection point  ↘</span>
+       │       <span class="hi">↗</span>                        <span class="hi">↘</span>
+       │    <span class="hi">↗</span>                                <span class="hi">↘</span>
+  ~~~~~│<span class="hi">↗</span>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<span class="hi">~↘</span>~~~~~~~~~~~~~~~~~~~~~~~~~
+       │←─── <span class="rd">SKIP ZONE (dead zone)</span> ────→│←─── <span class="gr">HEARD HERE</span> ──────────→
+       │      300–800 km                 │
+
+  Ground wave only in skip zone → KiwiSDRs here are useless for testing.
+  Ionospheric hop lands outside → this is where we check receivers.
+</pre>
+</div>
+
+<h3>The skip zone — why nearby doesn't work</h3>
+<p>
+Between the TX antenna and the point where the ionospheric reflection lands, there is
+a region where the sky-wave does NOT arrive. Stations within this zone can only receive
+the weak <em>ground wave</em>, which typically dies out within 50–100 km on HF.
+This means a KiwiSDR in Rotterdam <strong>cannot</strong> hear a 14 MHz signal from
+Amsterdam via sky-wave, even though it is only 70 km away.
+</p>
+
+<table>
+  <thead><tr><th>Band</th><th>Frequency</th><th>Typical skip zone</th><th>Useful range</th><th>Best time</th></tr></thead>
+  <tbody>
+    <tr><td>80m</td><td>3.5–4.0 MHz</td><td>100–500 km</td><td>500–2 000 km</td><td>Night</td></tr>
+    <tr><td>40m</td><td>7.0–7.3 MHz</td><td>200–800 km</td><td>800–4 000 km</td><td>Night / evening</td></tr>
+    <tr><td>20m</td><td>14.0–14.35 MHz</td><td>500–2 000 km</td><td>2 000–10 000 km</td><td>Day</td></tr>
+    <tr><td>10m</td><td>28–29.7 MHz</td><td>800–3 000 km</td><td>3 000–15 000 km</td><td>Day, high solar</td></tr>
+  </tbody>
+</table>
+
+<div class="box box-orange">
+  <div class="box-title">Ionosphere changes constantly</div>
+  Solar activity (sunspot cycle), time of day, and season all shift the ionosphere.
+  The tracker re-estimates the skip zone at each scan run based on frequency and UTC time.
+  Run scans at different times to see how propagation changes.
+</div>
+
+<h3>Multi-hop propagation</h3>
+<p>
+Signals can bounce multiple times between ionosphere and Earth. On 20m and 10m, two or
+three hops can carry a signal from Amsterdam to North America, Australia, or Japan.
+Each hop adds loss but also multiplies reach. The tracker captures all of this — if a
+KiwiSDR in the USA hears you, it shows up green on the map.
+</p>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     3. TRANSMIT POWER
+═══════════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2>3. How Much Power to Use</h2>
+
+<p>
+The IC-7300 can output up to 100 W. For range testing, <strong>more power is not
+always better</strong> — it can mask weak propagation paths and makes it harder to
+benchmark your antenna. Below is a practical guide:
+</p>
+
+<table>
+  <thead><tr><th>Power</th><th>Band</th><th>Typical reach</th><th>When to use</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>10 W</td>
+      <td>10m</td>
+      <td>500–10 000 km (band open)</td>
+      <td class="power-ok">Good baseline — shows true antenna performance</td>
+    </tr>
+    <tr>
+      <td class="power-rec">25 W</td>
+      <td>20m</td>
+      <td>2 000–12 000 km</td>
+      <td class="power-rec">★ Recommended starting point for all bands</td>
+    </tr>
+    <tr>
+      <td>50 W</td>
+      <td>40m / 20m</td>
+      <td>800–8 000 km</td>
+      <td class="power-ok">Good for marginal propagation days</td>
+    </tr>
+    <tr>
+      <td>100 W</td>
+      <td>All</td>
+      <td>Maximum reach</td>
+      <td class="power-low">Reserve for specific tests (compare with 25 W result)</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="box box-green">
+  <div class="box-title">★ Recommendation: Start at 25 W</div>
+  <ul>
+    <li>Plenty of power to reach across Europe on 40m and worldwide on 20m</li>
+    <li>Keeps ALC stable — a single sine tone at full power can stress the finals</li>
+    <li>Leaves a clear 6 dB headroom margin to compare antenna improvements</li>
+    <li>Good neighbour practice — brief test tones at 25 W cause minimal QRM</li>
+    <li>Set on IC-7300: <strong>Menu → SET → TX/RX → RF Power</strong></li>
+  </ul>
+</div>
+
+<div class="box box-orange">
+  <div class="box-title">Important: single-tone ALC warning</div>
+  A steady sine wave puts full sustained power into the final stage, unlike voice
+  which averages much lower. The IC-7300 handles this fine, but keep individual
+  transmissions short (the tracker limits each to 10 seconds by default).
+  Never run a continuous tone test for more than 30 seconds at 100 W.
+</div>
+
+<h3>Power vs. SNR at the receiver</h3>
+<p>
+Every doubling of power adds only +3 dB of SNR at the receiver. The ionospheric
+path loss and noise floor matter far more than a few extra watts. If the tracker
+shows you are not being heard, the answer is usually <strong>better antenna + better
+timing</strong>, not more power.
+</p>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     4. SYSTEM ARCHITECTURE
+═══════════════════════════════════════════════════════════════════════ -->
+<h2>4. System Architecture</h2>
+
+<div class="diagram">
+<span class="wh">┌─────────────────────────────────────────────────────────────────────┐</span>
+<span class="wh">│                        Your Windows PC                             │</span>
+<span class="wh">│                                                                     │</span>
+<span class="wh">│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐  │</span>
+<span class="wh">│  │</span> <span class="hi">web_app.py</span>   <span class="wh">│    │</span> <span class="hi">tracker.py</span>   <span class="wh">│    │</span> <span class="hi">tone_generator.py</span>    <span class="wh">│  │</span>
+<span class="wh">│  │</span> FastAPI/SSE  <span class="wh">│    │</span> CLI / logic  <span class="wh">│    │</span> sounddevice 1kHz     <span class="wh">│  │</span>
+<span class="wh">│  └──────┬───────┘    └──────┬───────┘    └──────────┬───────────┘  │</span>
+<span class="wh">│         │                  │                        │ USB audio     │</span>
+<span class="wh">│         └──────────────────┴────────────────────────┤              │</span>
+<span class="wh">│                         ┌──┴───────────────────────┐│              │</span>
+<span class="wh">│                         │</span> <span class="hi">radio_control.py</span>        <span class="wh">│</span><span class="yl">↓</span>              <span class="wh">│</span>
+<span class="wh">│                         │</span> rigctld TCP :4532        <span class="wh">│</span>              <span class="wh">│</span>
+<span class="wh">│                         └──────────────────────────┘</span>              <span class="wh">│</span>
+<span class="wh">└───────────────────────────────┬─────────────────────────────────────┘</span>
+                                <span class="wh">│ USB (CI-V serial + USB audio)</span>
+                         <span class="yl">┌──────┴──────┐</span>
+                         <span class="yl">│  IC-7300    │</span>  <span class="wh">← set to 25 W, 14.200 MHz USB</span>
+                         <span class="yl">└──────┬──────┘</span>
+                                <span class="wh">│ RF (1000 Hz tone on SSB)</span>
+                    <span class="rd">~~~~~~~~~~~~~┴~~~~~~~~~~~~~~~~~~~~~~~</span>
+                    <span class="rd">        I O N O S P H E R E</span>
+                    <span class="rd">~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</span>
+       <span class="gr">┌────────────────┐</span>         <span class="gr">┌────────────────┐</span>         <span class="gr">┌────────────────┐</span>
+       <span class="gr">│ KiwiSDR DE     │</span>         <span class="gr">│ KiwiSDR FR     │</span>         <span class="gr">│ KiwiSDR UA     │</span>
+       <span class="gr">│ 650 km         │</span>         <span class="gr">│ 800 km         │</span>         <span class="gr">│ 2200 km        │</span>
+       <span class="gr">│ SNR +18 dB ✓   │</span>         <span class="gr">│ SNR +12 dB ✓   │</span>         <span class="gr">│ SNR +6 dB  ✓   │</span>
+       <span class="gr">└────────┬───────┘</span>         <span class="gr">└────────┬───────┘</span>         <span class="gr">└────────┬───────┘</span>
+                <span class="wh">│ WebSocket (kiwiclient)                           │</span>
+                <span class="wh">└──────────────────────────────────────────────────┘</span>
+                                       <span class="wh">↓</span>
+                           <span class="hi">signal_detector.py</span>
+                           <span class="wh">FFT → tone SNR → heard / not heard</span>
+</div>
+
+<h3>Software modules</h3>
+
+<table>
+  <thead><tr><th>Module</th><th>Role</th></tr></thead>
+  <tbody>
+    <tr><td><code>web_app.py</code></td><td>FastAPI web server — browser UI, live SSE feed, REST API</td></tr>
+    <tr><td><code>tracker.py</code></td><td>CLI orchestrator — multi-band scan loop</td></tr>
+    <tr><td><code>radio_control.py</code></td><td>IC-7300 control via rigctld (frequency, mode, PTT)</td></tr>
+    <tr><td><code>tone_generator.py</code></td><td>Generate 1000 Hz sine tone → USB audio → IC-7300 mic input</td></tr>
+    <tr><td><code>kiwisdr_scanner.py</code></td><td>Fetch receiver list, connect via WebSocket, capture audio</td></tr>
+    <tr><td><code>signal_detector.py</code></td><td>FFT analysis — detect tone, compute SNR</td></tr>
+    <tr><td><code>propagation.py</code></td><td>Estimate skip zone, filter useful receiver range</td></tr>
+    <tr><td><code>report.py</code></td><td>Generate interactive HTML map + JSON log</td></tr>
+  </tbody>
+</table>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     5. TONE DETECTION
+═══════════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2>5. Why a Tone — and How Detection Works</h2>
+
+<h3>SSB + a single audio tone</h3>
+<p>
+On SSB (Single SideBand), the transmitter suppresses the carrier and transmits only
+one sideband of the modulated audio. If you feed a pure 1000 Hz sine wave into the
+microphone input:
+</p>
+<ul>
+  <li>On <strong>USB at 14.200 MHz</strong> → RF energy appears at <strong>14.201 MHz</strong></li>
+  <li>No other frequency components are transmitted — it is a single narrow spike</li>
+  <li>On a receiving SDR tuned to 14.200 MHz USB, the tone arrives as audio at <strong>1000 Hz</strong></li>
+</ul>
+
+<div class="box box-green">
+  <div class="box-title">Why a tone beats voice</div>
+  Voice is random — peak levels vary, there are gaps between words, and automated
+  detection is unreliable. A pure sine tone is <em>deterministic</em>:
+  the FFT finds a sharp peak at exactly the expected frequency every time,
+  even when the signal is barely above the noise.
+  This is identical to how SSB transmitters are calibrated in professional settings
+  (IEC 60268, "single-tone test").
+</div>
+
+<h3>FFT detection step by step</h3>
+
+<ol class="steps">
+  <li>
+    <div>
+      <strong>Audio capture:</strong> Connect to the KiwiSDR via WebSocket.
+      Tune to our dial frequency in USB mode.
+      Capture 12 seconds of raw 16-bit PCM audio at 12 000 Hz sample rate
+      (= 144 000 samples).
+    </div>
+  </li>
+  <li>
+    <div>
+      <strong>Windowing:</strong> Apply a Hann window to reduce spectral leakage
+      (prevents energy from our 1000 Hz tone from spilling into adjacent bins).
+    </div>
+  </li>
+  <li>
+    <div>
+      <strong>FFT:</strong> Compute the magnitude spectrum with
+      <code>numpy.fft.rfft()</code>. With 144 000 samples at 12 kHz, each FFT bin
+      is about 0.08 Hz wide — very precise tone location.
+    </div>
+  </li>
+  <li>
+    <div>
+      <strong>Tone power:</strong> Find the maximum magnitude in a ±50 Hz window
+      around 1000 Hz. Convert to dB.
+    </div>
+  </li>
+  <li>
+    <div>
+      <strong>Noise floor:</strong> Compute the median magnitude of all bins
+      between 200 Hz and 5000 Hz, excluding the tone window. Convert to dB.
+    </div>
+  </li>
+  <li>
+    <div>
+      <strong>SNR decision:</strong> <code>SNR = tone_power − noise_floor</code>.
+      If SNR ≥ 10 dB → <span style="color:var(--green)"><strong>HEARD ✓</strong></span>.
+      Below 10 dB → not heard.
+    </div>
+  </li>
+</ol>
+
+<div class="diagram">
+<pre>
+  Audio FFT at KiwiSDR (example — signal heard):
+
+  dB
+   │
+ 0 ┤
+   │                    <span class="gr">↑ 1000 Hz tone</span>
+-20┤                    <span class="gr">│  +22 dB SNR</span>
+   │                    <span class="gr">│</span>
+-40┤  <span class="hi">noise floor</span>   ───<span class="gr">█</span>───────────────────────────  ← ~-42 dB
+   │  (median 200–5k Hz, excl. tone window)
+-60┤
+   └────┬──────┬────┬───┬──────┬──────┬──────┬──── Hz
+       200    500  800 1000  1500   2500   4000  5000
+                       ↑
+                  Our tone (±50 Hz window checked)
+
+  SNR = -20 - (-42) = +22 dB  →  HEARD ✓
+</pre>
+</div>
+
+<h3>What the numbers mean</h3>
+
+<table>
+  <thead><tr><th>Tone SNR</th><th>Meaning</th><th>S-meter equivalent</th></tr></thead>
+  <tbody>
+    <tr><td>&lt; 0 dB</td><td>Signal not detected — below noise</td><td>Below S1</td></tr>
+    <tr><td>0–10 dB</td><td>Marginal — threshold zone</td><td>S1–S3</td></tr>
+    <tr><td>10–20 dB</td><td>Solid copy — readable signal</td><td>S4–S6</td></tr>
+    <tr><td>20–35 dB</td><td>Good signal strength</td><td>S7–S9</td></tr>
+    <tr><td>&gt; 35 dB</td><td>Strong / very local path</td><td>S9+</td></tr>
+  </tbody>
+</table>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     6. IC-7300 CONTROL
+═══════════════════════════════════════════════════════════════════════ -->
+<h2>6. IC-7300 Control (hamlib / rigctld)</h2>
+
+<p>
+The IC-7300 uses Icom's <strong>CI-V</strong> (Computer Interface V) protocol — a
+serial bus that lets software control frequency, mode, PTT and read meters.
+Over USB, the IC-7300 presents a virtual COM port (CP210x driver on Windows).
+</p>
+
+<h3>hamlib + rigctld</h3>
+<p>
+<strong>hamlib</strong> is the universal radio control library (supports 600+ rigs).
+We run it in daemon mode (<code>rigctld</code>) which exposes a simple TCP socket:
+</p>
+
+<pre>rigctld -m 373 -r COM3 -s 19200 -t 4532
+        │       │       │        └─ TCP port our software connects to
+        │       │       └─ baud rate (CI-V over USB: 19200)
+        │       └─ Windows COM port for the IC-7300
+        └─ hamlib model number 373 = Icom IC-7300</pre>
+
+<p>Our <code>radio_control.py</code> connects to <code>localhost:4532</code> and sends plain-text commands:</p>
+
+<table>
+  <thead><tr><th>Command</th><th>Action</th></tr></thead>
+  <tbody>
+    <tr><td><code>F 14200000</code></td><td>Set VFO to 14.200 MHz</td></tr>
+    <tr><td><code>M USB 0</code></td><td>Set mode to USB, default passband</td></tr>
+    <tr><td><code>T 1</code> / <code>T 0</code></td><td>PTT on / PTT off</td></tr>
+    <tr><td><code>l STRENGTH</code></td><td>Read S-meter</td></tr>
+    <tr><td><code>l SWR</code></td><td>Read SWR meter</td></tr>
+  </tbody>
+</table>
+
+<h3>USB audio (tone injection)</h3>
+<p>
+The IC-7300 also presents a <strong>USB audio codec</strong> (separate from the serial
+port). When in <code>USB-D</code> (data) mode, audio sent to this device goes directly
+to the TX modulator — bypassing the microphone.
+</p>
+<p>
+<code>tone_generator.py</code> uses Python's <code>sounddevice</code> library to stream
+a 1000 Hz sine wave to the IC-7300 audio device. Combined with PTT via rigctld, this
+creates a clean, hands-free test transmission.
+</p>
+
+<div class="box box-orange">
+  <div class="box-title">IC-7300 menu setting required</div>
+  Before the software can control PTT and inject audio, set on the radio:<br>
+  <strong>Menu → SET → Connectors → USB SEND/MOD → USB MOD = Data / USB SEND = Data</strong><br>
+  This routes the USB audio to the TX and allows software PTT.
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     7. KIWISDR NETWORK
+═══════════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2>7. The KiwiSDR Network</h2>
+
+<p>
+KiwiSDR is an open-source software-defined radio built on a Beaglebone Black.
+Owners connect them to the internet and make them publicly accessible at
+<a href="http://rx.kiwisdr.com">rx.kiwisdr.com</a>.
+There are over 600 receivers worldwide, many covering HF bands 0–30 MHz.
+</p>
+
+<h3>How we use them</h3>
+<ul>
+  <li>Fetch the public receiver list (JSON from sdr.hu / scrape rx.kiwisdr.com)</li>
+  <li>Calculate great-circle distance from Amsterdam to each receiver</li>
+  <li>Filter to the useful range — outside the skip zone but within propagation reach</li>
+  <li>Connect via WebSocket and tune to our test frequency</li>
+  <li>Stream 12 seconds of audio, run FFT, report SNR</li>
+</ul>
+
+<h3>WebSocket audio frame format</h3>
+<pre>KiwiSDR binary audio frame:
+  Byte  0– 2 : "SND"                (frame tag)
+  Byte  3    : flags
+  Bytes 4– 7 : sequence number      (uint32 big-endian)
+  Bytes 8– 9 : RSSI                 (int16 big-endian, dBm × 10)
+  Bytes 10–11: GPS nanoseconds      (unused)
+  Bytes 12+  : 16-bit signed PCM    (little-endian, mono, 12 000 Hz)</pre>
+
+<div class="box box-blue">
+  <div class="box-title">No KiwiSDR account needed</div>
+  Public receivers allow up to 4 simultaneous connections. Our scanner connects
+  briefly (12 s), measures, then disconnects — well within etiquette limits.
+  The connection is identified as <code>hfrange_pd1lvh</code> so operators
+  can see who is using their receiver.
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     8. RUNNING THE TRACKER
+═══════════════════════════════════════════════════════════════════════ -->
+<h2>8. Running the Tracker</h2>
+
+<h3>Web UI (recommended)</h3>
+<ol class="steps">
+  <li><div>Start rigctld: <code>rigctld -m 373 -r COM3 -s 19200</code></div></li>
+  <li><div>Start the web server: <code>python src/web_app.py</code></div></li>
+  <li><div>Open <code>http://localhost:8000</code> in your browser</div></li>
+  <li><div>Select COM port, audio device, bands → click <strong>Start scan</strong></div></li>
+  <li><div>Watch live log and map update in real time</div></li>
+</ol>
+
+<h3>CLI</h3>
+<pre># All bands (40m / 20m / 10m):
+python src/tracker.py --config config/config.yaml --port COM3
+
+# One band:
+python src/tracker.py --band 20m --port COM3
+
+# Listen only (no TX — useful to check for other signals first):
+python src/tracker.py --band 20m --no-radio
+
+# Loop every 30 minutes:
+python src/tracker.py --loop --interval 30</pre>
+
+<h3>Scan workflow timeline</h3>
+<div class="diagram">
+<pre>
+t=0s    <span class="hi">rigctld</span>     Set radio → 14.200 MHz USB
+t=1s    <span class="hi">rigctld</span>     PTT ON  ─────────────────┐
+t=1s    <span class="yl">sounddevice</span>  Play 1000 Hz tone        │  TX
+t=11s   <span class="yl">sounddevice</span>  Stop tone                 │
+t=11s   <span class="hi">rigctld</span>     PTT OFF  ────────────────┘
+t=1s    <span class="gr">kiwiclient</span>  Connect to KiwiSDR #1
+t=1-13s <span class="gr">kiwiclient</span>  Capture audio (12 s, 12 kHz)
+t=13s   <span class="wh">FFT</span>         Compute spectrum, measure tone SNR
+t=13s   <span class="wh">result</span>      KiwiSDR #1: SNR=+18 dB → HEARD ✓
+t=15s   <span class="gr">kiwiclient</span>  Connect to KiwiSDR #2
+...
+</pre>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     9. READING THE RESULTS
+═══════════════════════════════════════════════════════════════════════ -->
+<h2>9. Reading the Results</h2>
+
+<h3>Coverage map (<code>output/map.html</code>)</h3>
+<p>
+Open in any browser. Each KiwiSDR receiver is plotted at its geographical location:
+</p>
+<ul>
+  <li><span style="color:var(--green)">●</span> <strong>Green dot</strong> — tone heard (SNR ≥ 10 dB). Click for exact RSSI and SNR.</li>
+  <li><span style="color:var(--gray)">●</span> <strong>Grey dot</strong> — not heard.</li>
+  <li><span style="color:var(--red)">★</span> <strong>Red star</strong> — your transmit location (Amsterdam).</li>
+  <li><span style="color:var(--green)">──</span> <strong>Green line</strong> — propagation path where heard.</li>
+</ul>
+
+<h3>JSON log (<code>output/scan_TIMESTAMP.json</code>)</h3>
+<pre>{
+  "receiver": { "name": "PE4SDR Delft", "distance_km": 55.0 },
+  "rssi_dbm": -95.4,
+  "tone_snr_db": 21.3,
+  "tone_power_db": -74.1,
+  "noise_floor_db": -95.4,
+  "heard": true
+}</pre>
+
+<h3>Interpreting propagation patterns</h3>
+<ul>
+  <li><strong>Ring pattern</strong> — receivers at similar distances all hear you → one clean ionospheric hop</li>
+  <li><strong>One-sided</strong> — heard to the east but not west → the ionosphere is tilted or wind-shear effect</li>
+  <li><strong>Nothing</strong> — band is closed, or skip zone covers all receivers in range. Try a different band or time.</li>
+  <li><strong>Very far only</strong> — multi-hop. Receivers at 2× the skip distance hear you but intermediate ones don't.</li>
+</ul>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     10. QUICK REFERENCE
+═══════════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2>10. Quick Reference</h2>
+
+<table>
+  <thead><tr><th>Setting</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Callsign</td><td>PD1LVH</td></tr>
+    <tr><td>Location</td><td>Amsterdam, Netherlands — JO22</td></tr>
+    <tr><td>Radio</td><td>Icom IC-7300 (hamlib model 373)</td></tr>
+    <tr><td>Bands</td><td>40m (7.090 MHz), 20m (14.300 MHz), 10m (28.500 MHz)</td></tr>
+    <tr><td>Mode</td><td>USB (upper sideband)</td></tr>
+    <tr><td>Test tone</td><td>1000 Hz sine wave</td></tr>
+    <tr><td>Recommended power</td><td><strong>25 W</strong></td></tr>
+    <tr><td>TX duration per receiver</td><td>10 s</td></tr>
+    <tr><td>Audio sample duration</td><td>12 s at 12 000 Hz</td></tr>
+    <tr><td>Detection threshold</td><td>SNR ≥ 10 dB</td></tr>
+    <tr><td>Skip zone filter</td><td>Receivers &lt; 300 km excluded</td></tr>
+    <tr><td>Max receivers per scan</td><td>20</td></tr>
+    <tr><td>Web UI</td><td>http://localhost:8000</td></tr>
+    <tr><td>rigctld port</td><td>4532</td></tr>
+  </tbody>
+</table>
+
+<h3>Band selection guide</h3>
+
+<table>
+  <thead><tr><th>Goal</th><th>Best band</th><th>Best time (UTC)</th></tr></thead>
+  <tbody>
+    <tr><td>Europe coverage (500–3 000 km)</td><td>40m</td><td>18:00–06:00 UTC</td></tr>
+    <tr><td>Europe + Middle East (2 000–8 000 km)</td><td>20m</td><td>08:00–20:00 UTC</td></tr>
+    <tr><td>Transatlantic / worldwide</td><td>20m or 15m</td><td>12:00–16:00 UTC</td></tr>
+    <tr><td>Maximum DX (solar max)</td><td>10m</td><td>10:00–18:00 UTC</td></tr>
+  </tbody>
+</table>
+
+<h3>Troubleshooting checklist</h3>
+
+<table>
+  <thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr><td>No COM port in UI</td><td>Driver not installed</td><td>Install Silicon Labs CP210x driver</td></tr>
+    <tr><td>rigctld connect error</td><td>rigctld not running</td><td>Start rigctld first</td></tr>
+    <tr><td>PTT on but no RF</td><td>Wrong USB SEND mode</td><td>Menu → Connectors → USB SEND = Data</td></tr>
+    <tr><td>Audio plays but no TX</td><td>Wrong audio device</td><td>Select "USB Audio CODEC" in UI</td></tr>
+    <tr><td>0 receivers in range</td><td>Band closed / skip too large</td><td>Try different band or time</td></tr>
+    <tr><td>All SNR negative</td><td>Band dead</td><td>Check propagation at dxmaps.com</td></tr>
+    <tr><td>High SWR warning</td><td>Antenna mismatch</td><td>Check antenna and tuner</td></tr>
+  </tbody>
+</table>
+
+<div class="footer">
+  HF Range Tracker — PD1LVH — Amsterdam, JO22 &nbsp;|&nbsp;
+  github.com/epalmen/hfrange &nbsp;|&nbsp;
+  Generated 2026
+</div>
+
+</body>
+</html>
