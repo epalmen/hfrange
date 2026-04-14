@@ -1,44 +1,49 @@
-# HF Range Tracker - Configuration
-# Fill in your details before running
+# HF Range Tracker — Station Configuration
+# Edit this file before running
 
 station:
-  callsign: "YOUR_CALL"
-  # Your location (used to calculate distance to KiwiSDR receivers)
-  latitude: 52.0           # decimal degrees
-  longitude: 5.0           # decimal degrees (Netherlands approx)
-  locator: "JO22"          # Maidenhead grid locator
+  callsign: "PD1LVH"
+  latitude: 52.3676       # Amsterdam
+  longitude: 4.9041
 
 radio:
-  # IC-7300 serial port
-  # Linux:   /dev/ttyUSB0  or  /dev/ttyACM0
-  # Windows: COM3
-  # macOS:   /dev/cu.usbserial-...
-  port: "/dev/ttyUSB0"
+  # Serial port for IC-7300 USB CI-V connection.
+  # Override at runtime: --port COM3  (Windows) or --port /dev/ttyUSB0 (Linux)
+  # The web UI lets you pick from a dropdown.
+  port: "COM3"            # Windows default; Linux: /dev/ttyUSB0
   baud: 19200
-  # hamlib model number for IC-7300
-  model: 373
-  # rigctld TCP port (if using daemon mode)
+  model: 373              # hamlib model number for IC-7300
   rigctld_host: "localhost"
   rigctld_port: 4532
 
-scan:
-  # Frequency in Hz (e.g. 14.200 MHz = 14200000)
-  frequency: 14200000
-  mode: "USB"              # USB, LSB, CW, AM, FM
-  # Minimum distance to check (km) - skip zone, signals bounce over this area
-  min_distance_km: 300
-  # Maximum distance to check (km)
-  max_distance_km: 15000
-  # Max number of KiwiSDRs to check per scan
-  max_receivers: 20
-  # Seconds to sample RSSI on each KiwiSDR
-  sample_duration: 10
-  # Pause between receivers (seconds)
-  pause_between: 2
+bands:
+  # Each band: name, dial frequency (Hz), mode, tone_hz
+  # tone_hz = audio tone transmitted on SSB (appears at dial + tone on spectrum)
+  - name: "40m"
+    frequency_hz: 7090000
+    mode: "USB"
+    tone_hz: 1000
+  - name: "20m"
+    frequency_hz: 14300000
+    mode: "USB"
+    tone_hz: 1000
+  - name: "10m"
+    frequency_hz: 28500000
+    mode: "USB"
+    tone_hz: 1000
 
-signal:
-  # Minimum RSSI (dBm) to consider the signal "heard"
-  rssi_threshold: -120
-  # Optional: narrow passband offset from dial frequency (Hz)
-  # e.g. for a 1000 Hz CW tone set to 1000
-  tone_offset_hz: 0
+scan:
+  min_distance_km: 300    # Skip zone — don't check closer than this
+  max_distance_km: 15000
+  max_receivers: 20       # KiwiSDRs to check per band
+  sample_duration: 12     # Seconds of audio to sample per receiver
+  pause_between: 2        # Seconds between receivers
+  tone_detect_snr_db: 10  # Minimum SNR to consider signal "heard"
+
+tone:
+  # Duration to transmit the test tone per receiver check
+  tx_duration_s: 10
+  # Audio device name (substring match). Leave empty to use system default.
+  # Windows example: "USB Audio CODEC"
+  # Find your device with: python -m sounddevice
+  audio_device: ""

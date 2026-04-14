@@ -1,13 +1,14 @@
 # Setup Guide
 
-## 1. Install system dependencies
+## 1. Install dependencies
 
-### hamlib (for IC-7300 control)
+### hamlib (IC-7300 control)
 ```bash
 # Debian/Ubuntu/Raspberry Pi OS
 sudo apt install hamlib-utils
 
-# Verify IC-7300 support
+# Windows: download from https://hamlib.sourceforge.net/
+# Verify IC-7300 (model 373):
 rigctl --list | grep 7300
 ```
 
@@ -16,65 +17,99 @@ rigctl --list | grep 7300
 pip install -r requirements.txt
 ```
 
-### kiwiclient (optional but recommended)
-```bash
-pip install kiwiclient
-# or from source:
-git clone https://github.com/jks-prv/kiwiclient
-cd kiwiclient && pip install .
-```
+## 2. Connect IC-7300
 
-## 2. Connect and configure the IC-7300
-
-1. Connect IC-7300 to PC via USB cable (standard USB-A to USB-B)
-2. On the radio: **Menu → CONNECTORS → USB SEND/MOD** — set to **DAT**
-3. Check which serial port appeared:
+1. Connect IC-7300 to PC with USB-A to USB-B cable
+2. On radio: **Menu → CONNECTORS → USB SEND/MOD → DAT**
+3. The IC-7300 creates **two** USB devices:
+   - A **virtual serial port** (CI-V control) → used by rigctld
+   - A **USB audio codec** → used to play the tone
+4. Find the serial port:
    ```bash
+   # Linux
    ls /dev/ttyUSB* /dev/ttyACM*
+   # Windows: Device Manager → Ports (COM & LPT)
    ```
-4. Update `config/config.yaml` → `radio.port`
 
-## 3. Start rigctld
-
-```bash
-# Replace /dev/ttyUSB0 with your actual port
-rigctld -m 373 -r /dev/ttyUSB0 -s 19200 -t 4532 &
-
-# Test it:
-rigctl -m 2 get_freq   # model 2 = dummy/network rig talking to rigctld
-```
-
-## 4. Edit config
+## 3. Start rigctld (hamlib daemon)
 
 ```bash
-cp config/config.yaml config/my_config.yaml
-# Edit: callsign, latitude, longitude, frequency, mode
+# Linux
+rigctld -m 373 -r /dev/ttyUSB0 -s 19200 &
+
+# Windows (PowerShell)
+rigctld.exe -m 373 -r COM3 -s 19200
 ```
 
-## 5. Run a scan
+## 4. Find your audio device
+
+```bash
+python src/tone_generator.py --list-devices
+# Look for "USB Audio CODEC" or similar — that's your IC-7300
+```
+
+## 5. Run the web UI (recommended)
+
+```bash
+cd /path/to/hfrange
+python src/web_app.py
+# Open http://localhost:8000
+```
+
+In the UI:
+- Select your serial port from the dropdown
+- Select the IC-7300 USB audio device
+- Check the bands you want to test (40m / 20m / 10m)
+- Click **Start scan**
+
+## 6. Run via CLI
 
 ```bash
 cd src
+
+# Scan all bands:
 python tracker.py --config ../config/config.yaml
 
-# Continuous mode (every 30 min):
-python tracker.py --config ../config/config.yaml --loop --interval 30
+# One band only:
+python tracker.py --band 20m --port COM3
 
-# Auto-start rigctld:
-python tracker.py --config ../config/config.yaml --start-rigctld
+# Custom frequency:
+python tracker.py --frequency 14200000 --tone 1000
+
+# Continuous (every 30 min):
+python tracker.py --loop --interval 30
+
+# Listen only — no TX:
+python tracker.py --no-radio
 ```
 
-## 6. View results
+## 7. How tone detection works
 
-- **Terminal table**: shown live during scan
-- **HTML map**: `output/map.html` — open in browser
-- **JSON log**: `output/scan_<timestamp>.json`
+On SSB, your IC-7300 transmits the audio as a modulated RF signal.
+A 1000 Hz audio tone on USB at 14.200 MHz puts the RF at **14.201 MHz**.
+
+On each KiwiSDR:
+- We tune to 14.200 MHz USB
+- Capture 12 seconds of audio (12 kHz sample rate)
+- Run an FFT and look for a peak at **exactly 1000 Hz ± 50 Hz**
+- If the peak is ≥10 dB above the noise floor → **HEARD**
+
+This is far more reliable than RSSI alone because it confirms it's
+specifically *your* signal, not a random QRM source on the frequency.
+
+## Outputs
+
+| File | Description |
+|---|---|
+| `output/map.html` | Interactive coverage map — open in browser |
+| `output/scan_TIMESTAMP.json` | Raw results for further analysis |
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
-| `rigctld not reachable` | Start rigctld first, check port in config |
-| No receivers found | Check internet, try increasing max_distance_km |
-| All RSSI = timeout | KiwiSDR is offline or geo-blocked; try another time |
-| Skip zone too large | Try a lower band (e.g. 40m at night) |
+| No ports in dropdown | Check USB connection, install FTDI/CP210x driver |
+| rigctld not reachable | Start rigctld before the app, check port in config |
+| No receivers in range | Try a lower band or increase max_distance_km |
+| SNR always 0 | Check audio device — must route to IC-7300, not speakers |
+| PTT stuck on | rigctld crash — manually unkey with `rigctl T 0` |

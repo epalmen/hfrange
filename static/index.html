@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HF Range Tracker — PD1LVH</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- Leaflet for the map (CDN, no build step) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Header ── -->
+  <header>
+    <div>
+      <span class="callsign">PD1LVH</span>
+      <span class="subtitle">HF Range Tracker</span>
+    </div>
+    <span id="status-badge" class="badge badge-idle">Idle</span>
+  </header>
+
+  <!-- ── Controls ── -->
+  <div id="controls">
+    <div class="control-row">
+
+      <!-- Port -->
+      <div class="control-group">
+        <label>Serial port (IC-7300)</label>
+        <div class="select-row">
+          <select id="port-select"><option value="">Loading…</option></select>
+          <button class="btn-icon" onclick="loadPorts()" title="Refresh ports">↻</button>
+        </div>
+      </div>
+
+      <!-- Audio device -->
+      <div class="control-group">
+        <label>Audio device (IC-7300 USB)</label>
+        <div class="select-row">
+          <select id="audio-select"><option value="">System default</option></select>
+          <button class="btn-icon" onclick="loadAudioDevices()" title="Refresh devices">↻</button>
+        </div>
+      </div>
+
+      <!-- Tone -->
+      <div class="control-group">
+        <label>Tone (Hz)</label>
+        <input type="number" id="tone-hz" value="1000" min="200" max="3000" step="50" style="min-width:90px">
+      </div>
+
+    </div>
+
+    <div class="control-row">
+
+      <!-- Bands -->
+      <div class="control-group">
+        <label>Bands</label>
+        <div class="check-group" id="band-checks">
+          <!-- Populated from /api/bands -->
+        </div>
+      </div>
+
+      <!-- Listen only -->
+      <div class="control-group">
+        <label>Mode</label>
+        <label style="padding-top:4px">
+          <input type="checkbox" id="no-radio"> Listen only (no TX)
+        </label>
+      </div>
+
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-primary" id="btn-start" onclick="startScan()">▶ Start scan</button>
+      <button class="btn-danger"  id="btn-stop"  onclick="stopScan()" disabled>■ Stop</button>
+    </div>
+  </div>
+
+  <!-- ── Main ── -->
+  <div id="main">
+
+    <!-- Map -->
+    <div id="map-panel">
+      <div id="map"></div>
+      <div id="map-legend">
+        <span><span class="dot green"></span>Heard</span>
+        <span><span class="dot gray"></span>Not heard</span>
+        <span><span class="dot red"></span>TX location</span>
+      </div>
+    </div>
+
+    <!-- Right panel -->
+    <div id="right-panel">
+
+      <!-- Live log -->
+      <div id="log-panel">
+        <h3>Live log</h3>
+        <div id="log-output"></div>
+      </div>
+
+      <!-- Results table -->
+      <div id="results-panel">
+        <h3>Results <span id="results-summary"></span></h3>
+        <table id="results-table">
+          <thead>
+            <tr>
+              <th>Receiver</th>
+              <th>Dist</th>
+              <th>RSSI</th>
+              <th>SNR</th>
+              <th>Heard</th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

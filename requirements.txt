@@ -1,8 +1,11 @@
-requests
+fastapi
+uvicorn[standard]
 pyyaml
 websocket-client
 numpy
 geopy
 rich
-matplotlib
 folium
+requests
+pyserial
+sounddevice
