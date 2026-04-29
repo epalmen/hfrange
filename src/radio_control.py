@@ -102,7 +102,9 @@ class Radio:
 
     def ptt_on(self):
         """Key the transmitter."""
+        print(f"[rigctld] sending T 1", flush=True)
         resp = self._send("T 1")
+        print(f"[rigctld] T 1 response: {resp!r}", flush=True)
         if not resp.startswith("RPRT 0"):
             raise RuntimeError(f"PTT on failed: {resp}")
         log.info("PTT ON")
