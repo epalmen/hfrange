@@ -54,7 +54,6 @@ class ScanResult:
 # Receiver list
 # ---------------------------------------------------------------------------
 
-SDR_HU_URL = "http://sdr.hu/api/v1/sdr/list?type=kiwisdr"
 KIWISDR_PUBLIC_URL = "http://rx.kiwisdr.com/"
 
 
@@ -74,69 +73,56 @@ def fetch_receiver_list(
     max_km: float = 15000,
     limit: int = 20,
 ) -> list[KiwiReceiver]:
-    receivers = _fetch_from_sdrhu(my_lat, my_lon)
-    print(f"[fetch] sdr.hu returned {len(receivers)} receivers", flush=True)
-    if not receivers:
-        receivers = _fetch_from_kiwisdr_public(my_lat, my_lon)
-        print(f"[fetch] rx.kiwisdr.com returned {len(receivers)} receivers", flush=True)
+    receivers = _fetch_from_kiwisdr_public(my_lat, my_lon)
+    print(f"[fetch] rx.kiwisdr.com returned {len(receivers)} receivers", flush=True)
 
     filtered = [r for r in receivers if min_km <= r.distance_km <= max_km]
     filtered.sort(key=lambda r: r.distance_km)
-    print(f"[fetch] {len(filtered)} receivers in {min_km:.0f}–{max_km:.0f} km range (from {len(receivers)} total)", flush=True)
+    print(f"[fetch] {len(filtered)} in {min_km:.0f}–{max_km:.0f} km range", flush=True)
     return filtered[:limit]
-
-
-def _fetch_from_sdrhu(my_lat: float, my_lon: float) -> list[KiwiReceiver]:
-    try:
-        resp = requests.get(SDR_HU_URL, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-    except Exception as exc:
-        log.warning("sdr.hu fetch failed: %s", exc)
-        return []
-
-    receivers = []
-    for entry in data:
-        try:
-            lat = float(entry.get("gps_lat") or entry.get("lat") or 0)
-            lon = float(entry.get("gps_lon") or entry.get("lon") or 0)
-            raw_host = entry.get("url", "")
-            host = raw_host.replace("http://", "").replace("https://", "").split("/")[0].split(":")[0]
-            port = int(entry.get("port", 8073))
-            name = entry.get("name", host)
-            dist = _haversine_km(my_lat, my_lon, lat, lon)
-            if host:
-                receivers.append(KiwiReceiver(host=host, port=port, name=name,
-                                              latitude=lat, longitude=lon, distance_km=dist))
-        except (KeyError, ValueError, TypeError):
-            continue
-    return receivers
 
 
 def _fetch_from_kiwisdr_public(my_lat: float, my_lon: float) -> list[KiwiReceiver]:
     import re
     try:
-        resp = requests.get(KIWISDR_PUBLIC_URL, timeout=15)
+        resp = requests.get(KIWISDR_PUBLIC_URL, timeout=20)
         resp.raise_for_status()
-        print(f"[fetch] rx.kiwisdr.com HTTP {resp.status_code}, body length {len(resp.text)}", flush=True)
-        print(f"[fetch] rx.kiwisdr.com first 500 chars: {resp.text[:500]!r}", flush=True)
     except Exception as exc:
-        print(f"[fetch] rx.kiwisdr.com ERROR: {exc}", flush=True)
+        log.warning("rx.kiwisdr.com fetch failed: %s", exc)
         return []
 
-    pattern = re.compile(
-        r'href="http://([^/"]+)(?::(\d+))?/?"[^>]*>([^<]+)<.*?'
-        r'(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)',
-        re.DOTALL,
-    )
+    # The page embeds receiver data in HTML comment blocks inside each cl-entry div:
+    #   <!-- gps=(-34.27, 138.77) -->
+    #   <!-- name=My Receiver Name -->
+    #   <!-- offline=no -->
+    #   <a href='http://host:port' ...>
+    href_re   = re.compile(r"href='http://([^/:'\s]+):?(\d+)?'\s*target='_blank'")
+    gps_re    = re.compile(r"gps=\((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)")
+    name_re   = re.compile(r"<!-- name=([^\n]+?) -->")
+    offline_re = re.compile(r"<!-- offline=(\w+) -->")
+
     receivers = []
-    for m in pattern.finditer(resp.text):
-        host, port_str, name = m.group(1), m.group(2), m.group(3).strip()
-        lat, lon = float(m.group(4)), float(m.group(5))
-        dist = _haversine_km(my_lat, my_lon, lat, lon)
-        receivers.append(KiwiReceiver(host=host, port=int(port_str or 8073),
-                                      name=name, latitude=lat, longitude=lon,
-                                      distance_km=dist))
+    for entry in re.split(r"<div class='cl-entry[^']*'>", resp.text)[1:]:
+        try:
+            m_gps = gps_re.search(entry)
+            m_href = href_re.search(entry)
+            if not m_gps or not m_href:
+                continue
+            m_offline = offline_re.search(entry)
+            if m_offline and m_offline.group(1) == "yes":
+                continue
+            lat  = float(m_gps.group(1))
+            lon  = float(m_gps.group(2))
+            host = m_href.group(1)
+            port = int(m_href.group(2) or 8073)
+            m_name = name_re.search(entry)
+            name = m_name.group(1).strip() if m_name else host
+            dist = _haversine_km(my_lat, my_lon, lat, lon)
+            receivers.append(KiwiReceiver(host=host, port=port, name=name,
+                                          latitude=lat, longitude=lon,
+                                          distance_km=dist))
+        except (ValueError, AttributeError):
+            continue
     return receivers
 
 
