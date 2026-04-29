@@ -269,10 +269,8 @@ def _run_scan(cfg: dict, bands: list[dict], req: ScanRequest):
         r = cfg["radio"]
         try:
             radio = Radio(host=r["rigctld_host"], port=r["rigctld_port"])
-            print(f"[Radio] Connected to rigctld at {r['rigctld_host']}:{r['rigctld_port']}", flush=True)
             state.emit("radio", {"status": "connected"})
         except OSError as exc:
-            print(f"[Radio] ERROR connecting to rigctld: {exc}", flush=True)
             state.emit("radio", {"status": "disconnected", "error": str(exc)})
 
     try:
@@ -406,12 +404,10 @@ def _run_scan(cfg: dict, bands: list[dict], req: ScanRequest):
 def _start_tx_thread(radio, tone_hz, duration_s, audio_device):
     def tx():
         try:
-            print(f"[TX] PTT ON — tone {tone_hz} Hz for {duration_s}s", flush=True)
-            ok = transmit_tone(radio, tone_hz=tone_hz, duration_s=duration_s,
-                               audio_device=audio_device)
-            print(f"[TX] PTT OFF — ptt_ok={ok}", flush=True)
+            transmit_tone(radio, tone_hz=tone_hz, duration_s=duration_s,
+                          audio_device=audio_device)
         except Exception as exc:
-            print(f"[TX] ERROR: {exc}", flush=True)
+            log.warning("TX error: %s", exc)
 
     t = threading.Thread(target=tx, daemon=True)
     t.start()

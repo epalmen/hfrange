@@ -54,7 +54,7 @@ class ScanResult:
 # Receiver list
 # ---------------------------------------------------------------------------
 
-KIWISDR_PUBLIC_URL = "http://rx.kiwisdr.com/"
+KIWISDR_PUBLIC_URL = "http://kiwisdr.com/public/"
 
 
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -74,11 +74,11 @@ def fetch_receiver_list(
     limit: int = 20,
 ) -> list[KiwiReceiver]:
     receivers = _fetch_from_kiwisdr_public(my_lat, my_lon)
-    print(f"[fetch] rx.kiwisdr.com returned {len(receivers)} receivers", flush=True)
+    log.info("rx.kiwisdr.com returned %d receivers", len(receivers))
 
     filtered = [r for r in receivers if min_km <= r.distance_km <= max_km]
     filtered.sort(key=lambda r: r.distance_km)
-    print(f"[fetch] {len(filtered)} in {min_km:.0f}–{max_km:.0f} km range", flush=True)
+    log.info("%d receivers in %.0f–%.0f km range", len(filtered), min_km, max_km)
     return filtered[:limit]
 
 
