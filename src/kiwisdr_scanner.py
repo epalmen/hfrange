@@ -75,13 +75,14 @@ def fetch_receiver_list(
     limit: int = 20,
 ) -> list[KiwiReceiver]:
     receivers = _fetch_from_sdrhu(my_lat, my_lon)
+    print(f"[fetch] sdr.hu returned {len(receivers)} receivers", flush=True)
     if not receivers:
-        log.warning("sdr.hu empty, trying rx.kiwisdr.com")
         receivers = _fetch_from_kiwisdr_public(my_lat, my_lon)
+        print(f"[fetch] rx.kiwisdr.com returned {len(receivers)} receivers", flush=True)
 
     filtered = [r for r in receivers if min_km <= r.distance_km <= max_km]
     filtered.sort(key=lambda r: r.distance_km)
-    log.info("%d receivers in %.0f–%.0f km range (from %d total)", len(filtered), min_km, max_km, len(receivers))
+    print(f"[fetch] {len(filtered)} receivers in {min_km:.0f}–{max_km:.0f} km range (from {len(receivers)} total)", flush=True)
     return filtered[:limit]
 
 
