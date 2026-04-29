@@ -215,7 +215,7 @@ function handleEvent(type, data) {
     case 'receiver_result':
       const heard = data.heard;
       addLog(
-        `    ${heard ? '✓ HEARD' : '✗'} RSSI ${data.rssi_dbm} dBm  SNR ${data.tone_snr_db} dB`,
+        `    ${heard ? '✓ HEARD' : '✗'} RSSI ${data.rssi_dbm} dBm  SNR ${data.tone_snr_db} dB  noise ${data.noise_floor_db} dB`,
         heard ? 'heard' : '',
       );
       addReceiverMarker(data, heard);
