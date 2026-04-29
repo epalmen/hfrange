@@ -35,10 +35,10 @@ pip install -r requirements.txt
 
 ```bash
 # Linux
-rigctld -m 3073 -r /dev/ttyUSB0 -s 19200 &
+rigctld -m 3073 -r /dev/ttyUSB0 -s 19200 -P RIG &
 
 # Windows (PowerShell)
-rigctld.exe -m 3073 -r COM3 -s 19200
+rigctld.exe -m 3073 -r COM3 -s 19200 -P RIG
 ```
 
 ## 4. Find your audio device

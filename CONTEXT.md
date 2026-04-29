@@ -110,7 +110,7 @@ External system tools:
 
 ```powershell
 # 1. Start rigctld (find port in Device Manager)
-rigctld.exe -m 3073 -r COM3 -s 19200
+rigctld.exe -m 3073 -r COM3 -s 19200 -P RIG
 
 # 2. Start web app
 python src/web_app.py

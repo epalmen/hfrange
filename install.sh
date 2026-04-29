@@ -99,7 +99,7 @@ echo "  1. On the IC-7300: Menu > SET > Connectors"
 echo "     > USB SEND/MOD > set to 'Data'"
 echo
 echo "  2. Start rigctld (adjust port if needed):"
-echo -e "     ${BOLD}rigctld -m 3073 -r ${IC7300_PORT} -s 19200${NC}"
+echo -e "     ${BOLD}rigctld -m 3073 -r ${IC7300_PORT} -s 19200 -P RIG${NC}"
 echo
 echo "  3. Start the web app:"
 echo -e "     ${BOLD}python3 src/web_app.py${NC}"

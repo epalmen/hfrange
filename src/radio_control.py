@@ -3,7 +3,7 @@ IC-7300 radio control via rigctld (hamlib daemon).
 
 Usage:
     Start rigctld first:
-        rigctld -m 3073 -r /dev/ttyUSB0 -s 19200 &
+        rigctld -m 3073 -r /dev/ttyUSB0 -s 19200 -P RIG &
 
     Then use this module:
         radio = Radio()
@@ -160,7 +160,7 @@ def start_rigctld(port: str, baud: int, model: int = 3073) -> None:
     Call this before creating a Radio() instance.
     """
     import subprocess
-    cmd = ["rigctld", "-m", str(model), "-r", port, "-s", str(baud)]
+    cmd = ["rigctld", "-m", str(model), "-r", port, "-s", str(baud), "-P", "RIG"]
     log.info("Starting rigctld: %s", " ".join(cmd))
     subprocess.Popen(cmd)
     time.sleep(1)  # give the daemon a moment to bind

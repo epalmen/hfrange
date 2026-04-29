@@ -17,7 +17,7 @@ strength on distributed [KiwiSDR](http://kiwisdr.com/public/) receivers around t
 ```bash
 pip install -r requirements.txt
 sudo apt install hamlib-utils          # for rigctld
-rigctld -m 3073 -r /dev/ttyUSB0 -s 19200 &
+rigctld -m 3073 -r /dev/ttyUSB0 -s 19200 -P RIG &
 cp config/config.yaml config/my_config.yaml
 # edit my_config.yaml: callsign, coordinates, frequency
 cd src

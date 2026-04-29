@@ -495,7 +495,7 @@ Over USB, the IC-7300 presents a virtual COM port (CP210x driver on Windows).
 We run it in daemon mode (<code>rigctld</code>) which exposes a simple TCP socket:
 </p>
 
-<pre>rigctld -m 3073 -r COM3 -s 19200 -t 4532
+<pre>rigctld -m 3073 -r COM3 -s 19200 -P RIG -t 4532
         │       │       │        └─ TCP port our software connects to
         │       │       └─ baud rate (CI-V over USB: 19200)
         │       └─ Windows COM port for the IC-7300
