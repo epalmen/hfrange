@@ -12,6 +12,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
 // TX marker (Amsterdam)
 let txMarker = null;
 let receiverMarkers = {};   // host -> {marker, line}
+let activeHighlight = null; // {marker, line} for the receiver currently being sampled
 
 function placeOrMoveTX(lat, lon, callsign) {
   if (txMarker) map.removeLayer(txMarker);
@@ -64,6 +65,35 @@ function addReceiverMarker(r, heard) {
   }
 
   receiverMarkers[host] = { marker: icon, line };
+}
+
+
+function setActiveReceiver(host) {
+  clearActiveHighlight();
+  const entry = receiverMarkers[host];
+  if (!entry || !txMarker) return;
+  const pos   = entry.marker.getLatLng();
+  const txPos = txMarker.getLatLng();
+
+  const icon = L.divIcon({
+    className: '',
+    html: `<div style="width:16px;height:16px;background:#facc15;border:2px solid #fff;
+      border-radius:50%;animation:kiwi-pulse 0.8s ease-in-out infinite alternate"></div>`,
+    iconAnchor: [8, 8],
+  });
+  const marker = L.marker([pos.lat, pos.lng], { icon, zIndexOffset: 1000 }).addTo(map);
+  const line = L.polyline([[txPos.lat, txPos.lng], [pos.lat, pos.lng]], {
+    color: '#facc15', weight: 1.5, opacity: 0.7, dashArray: '7 6',
+  }).addTo(map);
+  activeHighlight = { marker, line };
+}
+
+function clearActiveHighlight() {
+  if (activeHighlight) {
+    map.removeLayer(activeHighlight.marker);
+    map.removeLayer(activeHighlight.line);
+    activeHighlight = null;
+  }
 }
 
 
@@ -210,10 +240,12 @@ function handleEvent(type, data) {
 
     case 'receiver_start':
       addLog(`  [${data.index + 1}/${data.total}] ${data.name} (${Math.round(data.distance_km)} km)…`);
+      setActiveReceiver(data.host);
       break;
 
     case 'receiver_result':
       const heard = data.heard;
+      clearActiveHighlight();
       addLog(
         `    ${heard ? '✓ HEARD' : '✗'} RSSI ${data.rssi_dbm} dBm  SNR ${data.tone_snr_db} dB  noise ${data.noise_floor_db} dB`,
         heard ? 'heard' : '',
@@ -223,6 +255,7 @@ function handleEvent(type, data) {
       break;
 
     case 'receiver_error':
+      clearActiveHighlight();
       addLog(`    ✗ timeout/error`, 'error');
       break;
 
@@ -231,6 +264,7 @@ function handleEvent(type, data) {
       break;
 
     case 'scan_complete':
+      clearActiveHighlight();
       addLog(`✓ Scan done — heard on ${data.heard}/${data.total} receivers`, 'heard');
       setStatus('done', `${data.heard}/${data.total}`);
       if (eventSource) eventSource.close();

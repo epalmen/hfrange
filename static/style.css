@@ -20,6 +20,11 @@
 
 html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; }
 
+@keyframes kiwi-pulse {
+  0%   { box-shadow: 0 0 4px 2px #facc15; }
+  100% { box-shadow: 0 0 12px 6px #facc15; }
+}
+
 #app { display: flex; flex-direction: column; height: 100vh; }
 
 /* ── Header ── */
