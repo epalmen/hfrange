@@ -118,8 +118,10 @@ def _fetch_from_kiwisdr_public(my_lat: float, my_lon: float) -> list[KiwiReceive
     try:
         resp = requests.get(KIWISDR_PUBLIC_URL, timeout=15)
         resp.raise_for_status()
+        print(f"[fetch] rx.kiwisdr.com HTTP {resp.status_code}, body length {len(resp.text)}", flush=True)
+        print(f"[fetch] rx.kiwisdr.com first 500 chars: {resp.text[:500]!r}", flush=True)
     except Exception as exc:
-        log.error("rx.kiwisdr.com fetch failed: %s", exc)
+        print(f"[fetch] rx.kiwisdr.com ERROR: {exc}", flush=True)
         return []
 
     pattern = re.compile(
