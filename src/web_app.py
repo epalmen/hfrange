@@ -119,6 +119,8 @@ class ScanRequest(BaseModel):
     tone_hz: float = 1000.0
     audio_device: str = ""
     no_radio: bool = False             # listen-only (no TX)
+    min_km: Optional[float] = None    # override auto skip-zone min distance
+    max_km: Optional[float] = None    # override auto skip-zone max distance
 
 
 # ---------------------------------------------------------------------------
@@ -288,6 +290,10 @@ def _run_scan(cfg: dict, bands: list[dict], req: ScanRequest):
             scan_start, scan_end = best_scan_range(freq_mhz, now)
             scan_start = max(scan_cfg["min_distance_km"], scan_start)
             scan_end = min(scan_cfg["max_distance_km"], scan_end)
+            if req.min_km is not None:
+                scan_start = req.min_km
+            if req.max_km is not None:
+                scan_end = req.max_km
 
             state.emit("band_start", {
                 "band": band_cfg["name"],

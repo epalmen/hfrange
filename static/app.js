@@ -140,6 +140,10 @@ async function startScan() {
   const toneHz = parseFloat(document.getElementById('tone-hz').value) || 1000;
   const noRadio = document.getElementById('no-radio').checked;
   const audioDevice = document.getElementById('audio-select').value;
+  const minKmVal = document.getElementById('min-km').value;
+  const maxKmVal = document.getElementById('max-km').value;
+  const minKm = minKmVal !== '' ? parseFloat(minKmVal) : null;
+  const maxKm = maxKmVal !== '' ? parseFloat(maxKmVal) : null;
 
   setStatus('running');
   clearLog();
@@ -149,7 +153,7 @@ async function startScan() {
   const resp = await fetch('/api/scan/start', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ port, bands, tone_hz: toneHz, no_radio: noRadio, audio_device: audioDevice }),
+    body: JSON.stringify({ port, bands, tone_hz: toneHz, no_radio: noRadio, audio_device: audioDevice, min_km: minKm, max_km: maxKm }),
   });
 
   if (!resp.ok) {
