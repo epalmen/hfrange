@@ -1,6 +1,7 @@
 """
 Output formatters: JSON log and interactive HTML map (via folium).
 """
+from __future__ import annotations
 
 import json
 from datetime import datetime, timezone

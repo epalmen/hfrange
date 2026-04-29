@@ -4,6 +4,7 @@ Basic HF propagation helpers.
 Skip zone estimation based on frequency and time of day.
 No external API needed — this is a rough model, not a full ray-tracer.
 """
+from __future__ import annotations
 
 import math
 from datetime import datetime, timezone

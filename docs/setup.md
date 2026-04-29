@@ -8,7 +8,7 @@
 sudo apt install hamlib-utils
 
 # Windows: download from https://hamlib.sourceforge.net/
-# Verify IC-7300 (model 373):
+# Verify IC-7300 (model 3073):
 rigctl --list | grep 7300
 ```
 
@@ -35,10 +35,10 @@ pip install -r requirements.txt
 
 ```bash
 # Linux
-rigctld -m 373 -r /dev/ttyUSB0 -s 19200 &
+rigctld -m 3073 -r /dev/ttyUSB0 -s 19200 &
 
 # Windows (PowerShell)
-rigctld.exe -m 373 -r COM3 -s 19200
+rigctld.exe -m 3073 -r COM3 -s 19200
 ```
 
 ## 4. Find your audio device

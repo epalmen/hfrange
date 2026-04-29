@@ -10,6 +10,7 @@ Flow:
        - Accumulate audio frames
        - Run FFT to detect our specific tone
 """
+from __future__ import annotations
 
 import logging
 import math

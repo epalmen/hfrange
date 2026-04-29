@@ -103,7 +103,7 @@ echo   2. On the IC-7300: Menu ^> SET ^> Connectors
 echo      ^> USB SEND/MOD ^> set to "Data" (DATA)
 echo.
 echo   3. Start rigctld (replace COM3 with your port):
-echo      rigctld.exe -m 373 -r COM3 -s 19200
+echo      rigctld.exe -m 3073 -r COM3 -s 19200
 echo.
 echo   4. Start the web app:
 echo      python src\web_app.py

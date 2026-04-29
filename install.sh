@@ -51,7 +51,7 @@ fi
 
 # Verify IC-7300 model is supported
 if rigctld --list 2>/dev/null | grep -q "7300"; then
-    echo -e "${GREEN}IC-7300 (model 373) supported.${NC}"
+    echo -e "${GREEN}IC-7300 (model 3073) supported.${NC}"
 else
     echo -e "${YELLOW}Could not verify IC-7300 support — hamlib may be outdated.${NC}"
 fi
@@ -99,7 +99,7 @@ echo "  1. On the IC-7300: Menu > SET > Connectors"
 echo "     > USB SEND/MOD > set to 'Data'"
 echo
 echo "  2. Start rigctld (adjust port if needed):"
-echo -e "     ${BOLD}rigctld -m 373 -r ${IC7300_PORT} -s 19200${NC}"
+echo -e "     ${BOLD}rigctld -m 3073 -r ${IC7300_PORT} -s 19200${NC}"
 echo
 echo "  3. Start the web app:"
 echo -e "     ${BOLD}python3 src/web_app.py${NC}"

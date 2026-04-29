@@ -42,7 +42,7 @@ narrow carrier. KiwiSDR receives this as audio at 1000 Hz. This is the standard
 Used hamlib daemon (`rigctld`) rather than direct serial CI-V because:
 - Language-agnostic (TCP socket, simple text protocol)
 - Works on Windows, Linux, Mac without recompiling
-- IC-7300 is hamlib model **373**, CI-V baud **19200**, USB serial port
+- IC-7300 is hamlib model **3073** (hamlib 4.x), CI-V baud **19200**, USB serial port
 
 ### 4. Audio via sounddevice → USB audio codec
 IC-7300 presents as two USB devices: a serial port (CI-V) and a USB audio codec.
@@ -104,13 +104,13 @@ rich          sounddevice
 
 External system tools:
 - `rigctld` (part of hamlib) — must be running before the app
-- Hamlib model 373 = IC-7300, baud 19200
+- Hamlib model 3073 = IC-7300, baud 19200
 
 ## How to start (Windows)
 
 ```powershell
 # 1. Start rigctld (find port in Device Manager)
-rigctld.exe -m 373 -r COM3 -s 19200
+rigctld.exe -m 3073 -r COM3 -s 19200
 
 # 2. Start web app
 python src/web_app.py

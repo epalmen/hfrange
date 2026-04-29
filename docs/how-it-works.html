@@ -495,11 +495,11 @@ Over USB, the IC-7300 presents a virtual COM port (CP210x driver on Windows).
 We run it in daemon mode (<code>rigctld</code>) which exposes a simple TCP socket:
 </p>
 
-<pre>rigctld -m 373 -r COM3 -s 19200 -t 4532
+<pre>rigctld -m 3073 -r COM3 -s 19200 -t 4532
         │       │       │        └─ TCP port our software connects to
         │       │       └─ baud rate (CI-V over USB: 19200)
         │       └─ Windows COM port for the IC-7300
-        └─ hamlib model number 373 = Icom IC-7300</pre>
+        └─ hamlib model number 3073 = Icom IC-7300</pre>
 
 <p>Our <code>radio_control.py</code> connects to <code>localhost:4532</code> and sends plain-text commands:</p>
 
@@ -581,7 +581,7 @@ There are over 600 receivers worldwide, many covering HF bands 0–30 MHz.
 
 <h3>Web UI (recommended)</h3>
 <ol class="steps">
-  <li><div>Start rigctld: <code>rigctld -m 373 -r COM3 -s 19200</code></div></li>
+  <li><div>Start rigctld: <code>rigctld -m 3073 -r COM3 -s 19200</code></div></li>
   <li><div>Start the web server: <code>python src/web_app.py</code></div></li>
   <li><div>Open <code>http://localhost:8000</code> in your browser</div></li>
   <li><div>Select COM port, audio device, bands → click <strong>Start scan</strong></div></li>
@@ -665,7 +665,7 @@ Open in any browser. Each KiwiSDR receiver is plotted at its geographical locati
   <tbody>
     <tr><td>Callsign</td><td>PD1LVH</td></tr>
     <tr><td>Location</td><td>Amsterdam, Netherlands — JO22</td></tr>
-    <tr><td>Radio</td><td>Icom IC-7300 (hamlib model 373)</td></tr>
+    <tr><td>Radio</td><td>Icom IC-7300 (hamlib model 3073)</td></tr>
     <tr><td>Bands</td><td>40m (7.090 MHz), 20m (14.300 MHz), 10m (28.500 MHz)</td></tr>
     <tr><td>Mode</td><td>USB (upper sideband)</td></tr>
     <tr><td>Test tone</td><td>1000 Hz sine wave</td></tr>

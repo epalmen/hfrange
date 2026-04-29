@@ -12,7 +12,7 @@ radio:
   # The web UI lets you pick from a dropdown.
   port: "COM3"            # Windows default; Linux: /dev/ttyUSB0
   baud: 19200
-  model: 373              # hamlib model number for IC-7300
+  model: 3073             # hamlib model number for IC-7300 (hamlib 4.x)
   rigctld_host: "localhost"
   rigctld_port: 4532
 

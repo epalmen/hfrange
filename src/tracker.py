@@ -20,6 +20,7 @@ Usage:
     # Auto-start rigctld:
     python tracker.py --start-rigctld
 """
+from __future__ import annotations
 
 import argparse
 import logging

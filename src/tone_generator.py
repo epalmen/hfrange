@@ -12,6 +12,7 @@ Use --audio-device to select it, or leave empty to print available devices.
 Standalone usage:
     python tone_generator.py --port COM3 --duration 10 --tone 1000
 """
+from __future__ import annotations
 
 import argparse
 import logging

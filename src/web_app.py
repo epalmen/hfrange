@@ -8,6 +8,7 @@ Start with:
 
 Then open http://localhost:8000 in your browser.
 """
+from __future__ import annotations
 
 import asyncio
 import json
