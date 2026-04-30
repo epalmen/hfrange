@@ -33,6 +33,8 @@ log = logging.getLogger(__name__)
 def list_audio_devices() -> list[dict]:
     """Return all audio output devices."""
     import sounddevice as sd
+    sd._terminate()
+    sd._initialize()
     devices = sd.query_devices()
     return [
         {"index": i, "name": d["name"], "outputs": d["max_output_channels"]}

@@ -135,10 +135,15 @@ async def index():
 @app.get("/api/ports")
 async def list_ports():
     """List available serial ports (for the COM port dropdown)."""
-    ports = [
-        {"port": p.device, "description": p.description or p.device}
-        for p in serial.tools.list_ports.comports()
-    ]
+    import serial
+    ports = []
+    for p in serial.tools.list_ports.comports():
+        try:
+            s = serial.Serial(p.device, timeout=0)
+            s.close()
+            ports.append({"port": p.device, "description": p.description or p.device})
+        except (serial.SerialException, OSError):
+            pass  # ghost/phantom port — skip it
     return {"ports": ports}
 
 
