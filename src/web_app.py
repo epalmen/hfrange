@@ -121,6 +121,8 @@ class ScanRequest(BaseModel):
     no_radio: bool = False             # listen-only (no TX)
     min_km: Optional[float] = None    # override auto skip-zone min distance
     max_km: Optional[float] = None    # override auto skip-zone max distance
+    tx_duration_s: float = 10.0       # seconds to transmit per receiver
+    drive_level: float = 0.7          # audio amplitude 0.0–1.0
 
 
 # ---------------------------------------------------------------------------
@@ -354,8 +356,9 @@ def _run_scan(cfg: dict, bands: list[dict], req: ScanRequest):
                 if radio:
                     tx_thread = _start_tx_thread(
                         radio, tone_hz,
-                        duration_s=tone_cfg["tx_duration_s"],
+                        duration_s=req.tx_duration_s,
                         audio_device=req.audio_device or None,
+                        amplitude=req.drive_level,
                     )
 
                 result = sample_receiver(
@@ -406,11 +409,11 @@ def _run_scan(cfg: dict, bands: list[dict], req: ScanRequest):
             radio.close()
 
 
-def _start_tx_thread(radio, tone_hz, duration_s, audio_device):
+def _start_tx_thread(radio, tone_hz, duration_s, audio_device, amplitude=0.7):
     def tx():
         try:
             transmit_tone(radio, tone_hz=tone_hz, duration_s=duration_s,
-                          audio_device=audio_device)
+                          audio_device=audio_device, amplitude=amplitude)
         except Exception as exc:
             log.warning("TX error: %s", exc)
 

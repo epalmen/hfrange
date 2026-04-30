@@ -174,6 +174,8 @@ async function startScan() {
   const maxKmVal = document.getElementById('max-km').value;
   const minKm = minKmVal !== '' ? parseFloat(minKmVal) : null;
   const maxKm = maxKmVal !== '' ? parseFloat(maxKmVal) : null;
+  const txDuration = parseFloat(document.getElementById('tx-duration').value) || 30;
+  const driveLevel = parseFloat(document.getElementById('drive-level').value) || 0.7;
 
   setStatus('running');
   clearLog();
@@ -183,7 +185,7 @@ async function startScan() {
   const resp = await fetch('/api/scan/start', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ port, bands, tone_hz: toneHz, no_radio: noRadio, audio_device: audioDevice, min_km: minKm, max_km: maxKm }),
+    body: JSON.stringify({ port, bands, tone_hz: toneHz, no_radio: noRadio, audio_device: audioDevice, min_km: minKm, max_km: maxKm, tx_duration_s: txDuration, drive_level: driveLevel }),
   });
 
   if (!resp.ok) {

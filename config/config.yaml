@@ -21,15 +21,15 @@ bands:
   # tone_hz = audio tone transmitted on SSB (appears at dial + tone on spectrum)
   - name: "40m"
     frequency_hz: 7090000
-    mode: "USB"
+    mode: "PKTUSB"           # DATA-USB (USB-D) — flat response, bypasses speech processing
     tone_hz: 1000
   - name: "20m"
     frequency_hz: 14300000
-    mode: "USB"
+    mode: "PKTUSB"
     tone_hz: 1000
   - name: "10m"
     frequency_hz: 28500000
-    mode: "USB"
+    mode: "PKTUSB"
     tone_hz: 1000
 
 scan:
@@ -42,7 +42,7 @@ scan:
 
 tone:
   # Duration to transmit the test tone per receiver check
-  tx_duration_s: 10
+  tx_duration_s: 30
   # Audio device name (substring match). Leave empty to use system default.
   # Windows example: "USB Audio CODEC"
   # Find your device with: python -m sounddevice
