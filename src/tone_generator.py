@@ -35,9 +35,14 @@ def list_audio_devices() -> list[dict]:
     import sounddevice as sd
     sd._terminate()
     sd._initialize()
+    hostapis = sd.query_hostapis()
     devices = sd.query_devices()
     return [
-        {"index": i, "name": d["name"], "outputs": d["max_output_channels"]}
+        {
+            "index": i,
+            "name": f"{d['name']} [{hostapis[d['hostapi']]['name']}]",
+            "outputs": d["max_output_channels"],
+        }
         for i, d in enumerate(devices)
         if d["max_output_channels"] > 0
     ]
