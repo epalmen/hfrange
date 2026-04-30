@@ -113,11 +113,21 @@ class TonePlayer:
             if outdata.shape[1] > 1:
                 outdata[:, 1] = tone  # stereo: copy to both channels
 
+        extra_settings = None
+        if device_idx is not None and hasattr(sd, "WasapiSettings"):
+            try:
+                api_name = sd.query_hostapis(sd.query_devices(device_idx)["hostapi"])["name"]
+                if "WASAPI" in api_name:
+                    extra_settings = sd.WasapiSettings(exclusive=False)
+            except Exception:
+                pass
+
         self._stream = sd.OutputStream(
             samplerate=self.sample_rate,
             channels=2,
             dtype="float32",
             device=device_idx,
+            extra_settings=extra_settings,
             callback=callback,
         )
         self._stream.start()
