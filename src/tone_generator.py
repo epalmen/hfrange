@@ -31,10 +31,8 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def list_audio_devices() -> list[dict]:
-    """Return all audio output devices."""
+    """Return all audio output devices with backend label. Does not reinit PortAudio."""
     import sounddevice as sd
-    sd._terminate()
-    sd._initialize()
     hostapis = sd.query_hostapis()
     devices = sd.query_devices()
     return [
@@ -49,10 +47,13 @@ def list_audio_devices() -> list[dict]:
 
 
 def find_device_index(name_fragment: str) -> Optional[int]:
-    """Find an output device whose name contains name_fragment (case-insensitive)."""
-    for dev in list_audio_devices():
-        if name_fragment.lower() in dev["name"].lower():
-            return dev["index"]
+    """Find an output device index by name. Strips the [backend] label the UI appends."""
+    import re
+    import sounddevice as sd
+    base = re.sub(r'\s*\[.*?\]\s*$', '', name_fragment).strip()
+    for i, d in enumerate(sd.query_devices()):
+        if d["max_output_channels"] > 0 and base.lower() in d["name"].lower():
+            return i
     return None
 
 
@@ -167,20 +168,25 @@ def transmit_tone(
     Returns True on success, False if PTT control failed (audio still played).
     """
     player = TonePlayer(tone_hz=tone_hz, amplitude=amplitude, device=audio_device)
-    ptt_ok = True
-
-    if radio:
-        try:
-            radio.ptt_on()
-            log.info("PTT ON")
-        except Exception as exc:
-            log.warning("PTT control failed: %s — continuing audio only", exc)
-            ptt_ok = False
 
     try:
-        with player:
-            log.info("Transmitting %.0f Hz tone for %.1f s", tone_hz, duration_s)
-            time.sleep(duration_s)
+        player.start()
+    except Exception as exc:
+        log.error("Audio stream failed to open: %s — TX aborted", exc)
+        return False
+
+    ptt_ok = True
+    try:
+        if radio:
+            try:
+                radio.ptt_on()
+                log.info("PTT ON")
+            except Exception as exc:
+                log.warning("PTT control failed: %s — continuing audio only", exc)
+                ptt_ok = False
+
+        log.info("Transmitting %.0f Hz tone for %.1f s", tone_hz, duration_s)
+        time.sleep(duration_s)
     finally:
         if radio and ptt_ok:
             try:
@@ -188,6 +194,7 @@ def transmit_tone(
                 log.info("PTT OFF")
             except Exception as exc:
                 log.error("PTT OFF failed: %s — MANUAL PTT RELEASE REQUIRED", exc)
+        player.stop()
 
     return ptt_ok
 

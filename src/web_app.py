@@ -152,7 +152,10 @@ async def list_ports():
 @app.get("/api/audio-devices")
 async def audio_devices():
     """List audio output devices (to find the IC-7300 USB audio)."""
+    import sounddevice as sd
     try:
+        sd._terminate()
+        sd._initialize()
         devs = list_audio_devices()
         return {"devices": devs}
     except Exception as exc:
