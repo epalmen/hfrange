@@ -176,10 +176,15 @@ def sample_receiver(
     done = threading.Event()
     start_time = [0.0]
 
+    # Map hamlib mode names to KiwiSDR mode names
+    _KIWI_MODE = {"pktusb": "usb", "pktlsb": "lsb", "pktfm": "nbfm",
+                  "pktsb": "usb", "usbd": "usb", "lsbd": "lsb"}
+    kiwi_mode = _KIWI_MODE.get(mode.lower(), mode.lower())
+
     def on_open(ws):
         start_time[0] = time.time()
         ws.send("SET auth t=kiwi p=")
-        ws.send(f"SET mod={mode.lower()} low_cut=-5000 high_cut=5000 freq={freq_khz:.3f}")
+        ws.send(f"SET mod={kiwi_mode} low_cut=0 high_cut=3000 freq={freq_khz:.3f}")
         ws.send("SET AR OK in=12000 out=44100")
         ws.send("SET compression=0")
         ws.send("SET ident_user=hfrange_pd1lvh")
