@@ -89,7 +89,10 @@
       <div class="control-group">
         <label>Mode</label>
         <label style="padding-top:4px">
-          <input type="checkbox" id="no-radio"> Listen only (no TX)
+          <input type="checkbox" id="no-radio" onchange="onNoRadioChange()"> Listen only (no TX)
+        </label>
+        <label id="rx-listen-label" style="padding-top:2px;display:none">
+          <input type="checkbox" id="rx-listen"> Listen in browser
         </label>
       </div>
 
@@ -140,6 +143,32 @@
         </table>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ── Waterfall ── -->
+  <div id="waterfall-section" class="wf-hidden">
+    <div id="waterfall-header">
+      <div class="wf-info">
+        <span class="wf-label">Waterfall</span>
+        <span id="wf-rx-name"></span>
+        <span id="wf-rx-freq"></span>
+      </div>
+      <div class="wf-controls">
+        <label class="wf-label">Vol</label>
+        <input type="range" id="wf-volume" min="0" max="1" step="0.05" value="0.5">
+        <label class="wf-check-label">
+          <input type="checkbox" id="wf-listen"> Audio
+        </label>
+        <button class="btn-icon" onclick="closeWaterfall()" title="Close">✕</button>
+      </div>
+    </div>
+    <div id="wf-canvas-wrap">
+      <canvas id="waterfall-canvas"></canvas>
+      <div id="wf-freq-axis">
+        <span>0</span><span>500 Hz</span><span>1 kHz</span>
+        <span>1.5 kHz</span><span>2 kHz</span><span>2.5 kHz</span><span>3 kHz</span>
+      </div>
     </div>
   </div>
 

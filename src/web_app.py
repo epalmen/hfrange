@@ -22,7 +22,7 @@ from typing import Optional
 import serial.tools.list_ports
 import uvicorn
 import yaml
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -254,6 +254,85 @@ async def get_results():
     return {"results": [_result_to_dict(r) for r in results]}
 
 
+@app.websocket("/ws/kiwi")
+async def kiwi_proxy(
+    websocket: WebSocket,
+    host: str,
+    port: int = 8073,
+    freq_khz: float = 14200.0,
+    mode: str = "usb",
+):
+    """Proxy KiwiSDR audio frames to the browser for live waterfall + audio."""
+    await websocket.accept()
+
+    loop = asyncio.get_running_loop()
+    audio_queue: asyncio.Queue = asyncio.Queue(maxsize=300)
+    done = threading.Event()
+
+    _KIWI_MODE = {"pktusb": "usb", "pktlsb": "lsb", "usbd": "usb", "lsbd": "lsb"}
+    kiwi_mode = _KIWI_MODE.get(mode.lower(), mode.lower())
+    url = f"ws://{host}:{port}/kiwi/{int(time.time())}/SND"
+
+    def _enqueue(frame: bytes):
+        try:
+            audio_queue.put_nowait(frame)
+        except asyncio.QueueFull:
+            pass
+
+    def on_open(kws):
+        kws.send("SET auth t=kiwi p=")
+        kws.send(f"SET mod={kiwi_mode} low_cut=0 high_cut=3000 freq={freq_khz:.3f}")
+        kws.send("SET AR OK in=12000 out=44100")
+        kws.send("SET compression=0")
+        kws.send("SET ident_user=hfrange_pd1lvh")
+
+    def on_message(kws, message):
+        if (isinstance(message, (bytes, bytearray))
+                and len(message) > 12 and message[:3] == b"SND"):
+            loop.call_soon_threadsafe(_enqueue, bytes(message))
+
+    def on_error(kws, exc):
+        done.set()
+
+    def on_close(kws, *_):
+        done.set()
+
+    try:
+        import websocket as _ws_lib
+    except ImportError:
+        await websocket.close(1011, "websocket-client not installed")
+        return
+
+    kws = _ws_lib.WebSocketApp(
+        url,
+        on_open=on_open,
+        on_message=on_message,
+        on_error=on_error,
+        on_close=on_close,
+    )
+    kws_thread = threading.Thread(
+        target=kws.run_forever, kwargs={"ping_interval": 0}, daemon=True
+    )
+    kws_thread.start()
+
+    try:
+        while not done.is_set():
+            try:
+                frame = await asyncio.wait_for(audio_queue.get(), timeout=5.0)
+                await websocket.send_bytes(frame)
+            except asyncio.TimeoutError:
+                try:
+                    await websocket.send_text('{"type":"keepalive"}')
+                except Exception:
+                    break
+            except (WebSocketDisconnect, Exception):
+                break
+    finally:
+        done.set()
+        kws.close()
+        kws_thread.join(timeout=2)
+
+
 @app.get("/map", response_class=HTMLResponse)
 async def get_map():
     """Serve the live coverage map."""
@@ -335,8 +414,8 @@ def _run_scan(cfg: dict, bands: list[dict], req: ScanRequest):
                 "band": band_cfg["name"],
                 "count": len(receivers),
                 "receivers": [
-                    {"name": r.name, "host": r.host, "lat": r.latitude,
-                     "lon": r.longitude, "distance_km": r.distance_km}
+                    {"name": r.name, "host": r.host, "port": r.port,
+                     "lat": r.latitude, "lon": r.longitude, "distance_km": r.distance_km}
                     for r in receivers
                 ],
             })
@@ -351,6 +430,7 @@ def _run_scan(cfg: dict, bands: list[dict], req: ScanRequest):
                     "total": len(receivers),
                     "name": receiver.name,
                     "host": receiver.host,
+                    "port": receiver.port,
                     "distance_km": receiver.distance_km,
                 })
 

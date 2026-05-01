@@ -1,5 +1,9 @@
 /* HF Range Tracker — frontend JS */
 
+// ── Scan state (shared between map + waterfall) ───────────────────────────
+let currentScanFreqKhz = 14200;
+let currentScanMode    = 'usb';
+
 // ── Map setup ─────────────────────────────────────────────────────────────
 
 const map = L.map('map', { zoomControl: true }).setView([52.37, 4.9], 4);
@@ -52,7 +56,11 @@ function addReceiverMarker(r, heard) {
     Distance: ${Math.round(r.receiver.distance_km)} km<br>
     RSSI: ${r.rssi_dbm} dBm<br>
     Tone SNR: ${r.tone_snr_db} dB<br>
-    <b style="color:${heard ? '#22c55e' : '#888'}">${heard ? '✓ HEARD' : '✗ Not heard'}</b>
+    <b style="color:${heard ? '#22c55e' : '#888'}">${heard ? '✓ HEARD' : '✗ Not heard'}</b><br>
+    <button onclick="connectWaterfall('${r.receiver.host}',${r.receiver.port || 8073},${currentScanFreqKhz},'${currentScanMode}','${r.receiver.name.replace(/'/g, '')}')"
+      style="margin-top:6px;padding:2px 10px;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px">
+      ◉ Waterfall
+    </button>
   `;
   icon.addTo(map).bindPopup(popup);
 
@@ -227,6 +235,8 @@ function handleEvent(type, data) {
       break;
 
     case 'band_start':
+      currentScanFreqKhz = data.frequency_hz / 1000;
+      currentScanMode    = data.mode.toLowerCase();
       addLog(`▶ Band ${data.band} — ${(data.frequency_hz/1e6).toFixed(4)} MHz, tone ${data.tone_hz} Hz`, 'band');
       addLog(`  Skip zone: ${Math.round(data.skip_zone.min_km)}–${Math.round(data.skip_zone.max_km)} km`, 'info');
       break;
@@ -243,6 +253,9 @@ function handleEvent(type, data) {
     case 'receiver_start':
       addLog(`  [${data.index + 1}/${data.total}] ${data.name} (${Math.round(data.distance_km)} km)…`);
       setActiveReceiver(data.host);
+      if (document.getElementById('rx-listen').checked) {
+        connectWaterfall(data.host, data.port || 8073, currentScanFreqKhz, currentScanMode, data.name);
+      }
       break;
 
     case 'receiver_result':
@@ -316,9 +329,13 @@ function clearLog() {
 function addResultRow(r) {
   const heard = r.heard;
   const rssiClass = r.rssi_dbm > -90 ? 'rssi-good' : r.rssi_dbm > -110 ? 'rssi-mid' : 'rssi-bad';
+  const safeName = (r.receiver.name || '').replace(/'/g, '');
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td><a href="http://${r.receiver.host}:${r.receiver.port}/" target="_blank" style="color:inherit">${r.receiver.name}</a></td>
+    <td>
+      <a href="http://${r.receiver.host}:${r.receiver.port}/" target="_blank" style="color:inherit">${r.receiver.name}</a>
+      <button class="btn-watch" onclick="connectWaterfall('${r.receiver.host}',${r.receiver.port || 8073},${currentScanFreqKhz},'${currentScanMode}','${safeName}')" title="Open waterfall">◉</button>
+    </td>
     <td>${Math.round(r.receiver.distance_km)} km</td>
     <td class="${rssiClass}">${r.rssi_dbm}</td>
     <td>${r.tone_snr_db}</td>
@@ -344,6 +361,215 @@ function clearMarkers() {
   });
   receiverMarkers = {};
 }
+
+
+// ── No-radio toggle ───────────────────────────────────────────────────────
+
+function onNoRadioChange() {
+  const checked = document.getElementById('no-radio').checked;
+  document.getElementById('rx-listen-label').style.display = checked ? '' : 'none';
+  if (!checked) document.getElementById('rx-listen').checked = false;
+}
+
+
+// ── Waterfall + Audio ─────────────────────────────────────────────────────
+
+const FFT_SIZE   = 1024;
+const KIWI_SR    = 12000;
+const WF_MAX_HZ  = 3200;   // display USB audio band (0–3.2 kHz)
+const FLOOR_DB   = -120;
+const CEIL_DB    = -20;
+
+// Hann window coefficients
+const _hann = new Float32Array(FFT_SIZE);
+for (let i = 0; i < FFT_SIZE; i++) {
+  _hann[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (FFT_SIZE - 1)));
+}
+
+let wfWs        = null;
+let audioCtx    = null;
+let gainNode    = null;
+let nextPlayAt  = 0;
+let _pcmBuf     = new Int16Array(0);
+
+function connectWaterfall(host, port, freqKhz, mode, rxName) {
+  disconnectWaterfall();
+
+  const section = document.getElementById('waterfall-section');
+  section.classList.remove('wf-hidden');
+
+  document.getElementById('wf-rx-name').textContent  = rxName || host;
+  document.getElementById('wf-rx-freq').textContent  =
+    `${Number(freqKhz).toFixed(3)} kHz  ${(mode || 'usb').toUpperCase()}`;
+
+  const canvas = document.getElementById('waterfall-canvas');
+  canvas.width  = canvas.clientWidth || 800;
+  canvas.height = 160;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  _pcmBuf = new Int16Array(0);
+
+  const params = new URLSearchParams({
+    host, port, freq_khz: Number(freqKhz).toFixed(3), mode: (mode || 'usb').toLowerCase(),
+  });
+  wfWs = new WebSocket(`ws://${location.host}/ws/kiwi?${params}`);
+  wfWs.binaryType = 'arraybuffer';
+
+  wfWs.onmessage = (e) => {
+    if (typeof e.data === 'string') return;             // keepalive JSON
+    if (e.data.byteLength < 13) return;
+    const tag = new Uint8Array(e.data, 0, 3);
+    if (tag[0] !== 83 || tag[1] !== 78 || tag[2] !== 68) return; // "SND"
+
+    const sampleCount = (e.data.byteLength - 12) / 2;
+    const samples     = new Int16Array(e.data, 12, sampleCount);
+
+    _playPCM(samples);
+    _accumulateFFT(ctx, canvas, samples);
+  };
+
+  wfWs.onerror = () => {
+    document.getElementById('wf-rx-name').textContent += ' (error)';
+  };
+  wfWs.onclose = () => {};
+}
+
+function _accumulateFFT(ctx, canvas, samples) {
+  const merged = new Int16Array(_pcmBuf.length + samples.length);
+  merged.set(_pcmBuf);
+  merged.set(samples, _pcmBuf.length);
+  _pcmBuf = merged;
+
+  while (_pcmBuf.length >= FFT_SIZE) {
+    const win = _pcmBuf.slice(0, FFT_SIZE);
+    _pcmBuf   = _pcmBuf.slice(FFT_SIZE >> 1);   // 50% overlap
+    _drawWFLine(ctx, canvas, _computeFFT(win));
+  }
+}
+
+function _computeFFT(samples) {
+  const real = new Float32Array(FFT_SIZE);
+  const imag = new Float32Array(FFT_SIZE);
+  for (let i = 0; i < FFT_SIZE; i++) real[i] = (samples[i] / 32768) * _hann[i];
+
+  _fft(real, imag);
+
+  const half = FFT_SIZE >> 1;
+  const mag  = new Float32Array(half);
+  for (let i = 0; i < half; i++) {
+    const p = real[i] * real[i] + imag[i] * imag[i];
+    mag[i]  = p > 0 ? 10 * Math.log10(p / (FFT_SIZE * FFT_SIZE)) : FLOOR_DB;
+  }
+  return mag;
+}
+
+function _fft(re, im) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) {
+      [re[i], re[j]] = [re[j], re[i]];
+      [im[i], im[j]] = [im[j], im[i]];
+    }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = -2 * Math.PI / len;
+    const wRe = Math.cos(ang), wIm = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let uRe = 1, uIm = 0;
+      for (let k = 0; k < (len >> 1); k++) {
+        const j   = i + k + (len >> 1);
+        const tRe = uRe * re[j] - uIm * im[j];
+        const tIm = uRe * im[j] + uIm * re[j];
+        re[j]     = re[i + k] - tRe;
+        im[j]     = im[i + k] - tIm;
+        re[i + k] += tRe;
+        im[i + k] += tIm;
+        const nr = uRe * wRe - uIm * wIm;
+        uIm = uRe * wIm + uIm * wRe;
+        uRe = nr;
+      }
+    }
+  }
+}
+
+function _drawWFLine(ctx, canvas, magDb) {
+  const w       = canvas.width;
+  const h       = canvas.height;
+  const maxBin  = Math.floor(WF_MAX_HZ * FFT_SIZE / KIWI_SR);
+
+  // Scroll existing content down by 1 px
+  const existing = ctx.getImageData(0, 0, w, h - 1);
+  ctx.putImageData(existing, 0, 1);
+
+  // New row at top
+  const row = ctx.createImageData(w, 1);
+  for (let x = 0; x < w; x++) {
+    const bin = Math.floor(x * maxBin / w);
+    const db  = magDb[bin] !== undefined ? magDb[bin] : FLOOR_DB;
+    const v   = Math.max(0, Math.min(255,
+                  Math.round((db - FLOOR_DB) * 255 / (CEIL_DB - FLOOR_DB))));
+    const [r, g, b] = _heat(v);
+    const p = x << 2;
+    row.data[p]     = r;
+    row.data[p + 1] = g;
+    row.data[p + 2] = b;
+    row.data[p + 3] = 255;
+  }
+  ctx.putImageData(row, 0, 0);
+}
+
+function _heat(v) {
+  if (v <  64) return [0,          0,          Math.min(255, v * 4)];
+  if (v < 128) return [0,          (v - 64) * 4,  255];
+  if (v < 192) return [0,          255,           255 - (v - 128) * 4];
+  if (v < 224) return [(v - 192) * 8, 255,        0];
+  return             [255,         Math.max(0, 255 - (v - 224) * 8), 0];
+}
+
+function _playPCM(samples) {
+  if (!document.getElementById('wf-listen').checked) return;
+  if (!audioCtx) {
+    audioCtx   = new (window.AudioContext || window.webkitAudioContext)();
+    gainNode   = audioCtx.createGain();
+    gainNode.gain.value = parseFloat(document.getElementById('wf-volume').value);
+    gainNode.connect(audioCtx.destination);
+    nextPlayAt = audioCtx.currentTime;
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  const f32 = new Float32Array(samples.length);
+  for (let i = 0; i < samples.length; i++) f32[i] = samples[i] / 32768;
+
+  const buf = audioCtx.createBuffer(1, f32.length, KIWI_SR);
+  buf.copyToChannel(f32, 0);
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  src.connect(gainNode);
+  const startAt = Math.max(audioCtx.currentTime + 0.05, nextPlayAt);
+  src.start(startAt);
+  nextPlayAt = startAt + buf.duration;
+}
+
+function disconnectWaterfall() {
+  if (wfWs) { wfWs.close(); wfWs = null; }
+  _pcmBuf = new Int16Array(0);
+}
+
+function closeWaterfall() {
+  disconnectWaterfall();
+  document.getElementById('waterfall-section').classList.add('wf-hidden');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('wf-volume').addEventListener('input', (e) => {
+    if (gainNode) gainNode.gain.value = parseFloat(e.target.value);
+  });
+});
 
 
 // ── Init ──────────────────────────────────────────────────────────────────
